@@ -1,7 +1,6 @@
 require 'mechanize'
 require 'open-uri'
 require 'fileutils'
-require 'pry-byebug'
 
 class RecipeScraper
     attr_reader :pages
@@ -27,7 +26,6 @@ class RecipeScraper
         @pages.each do |title, node_obj|
             node_obj[:recipes].each do |recipe_node|
                 write_recipe(recipe_node, node_obj)
-                # binding.pry
             end
         end
     end
@@ -37,7 +35,7 @@ class RecipeScraper
         def format_page_info(link_node, category_node)
             url = link_node[:node].href
             title = link_node[:node].text.split("|")[0].strip
-            file_name = title.to_s.downcase.split(" ").join("_") + ".txt"
+            file_name = title.to_s.downcase.split(" ").join("_").gsub(",", "-") + ".txt"
             recipe_header = "#{ title } courtesy #{ url }"
             category_name = category_node[:node].text.split(" ").join("_")
             file_loc = "rachnas-kitchen/#{category_name}/#{file_name}"
