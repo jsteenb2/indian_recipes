@@ -60,7 +60,7 @@ class RecipeScraper
         def get_doc_info(file, doc, section)
             doc_info = doc.css ".#{section}"
             file.puts
-            file.puts "#{section}"
+            file.puts "#{section.upcase}"
             file.puts "------------"
             doc_info.each_with_index do |node, index|
                 file.puts section == 'ingredient' ? node.text : "#{index + 1}) #{node.text}"
