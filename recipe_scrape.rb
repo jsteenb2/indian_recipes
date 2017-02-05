@@ -1,5 +1,6 @@
 require 'mechanize'
 require 'open-uri'
+require 'fileutils'
 require 'pry-byebug'
 
 class RecipeScraper
@@ -26,7 +27,7 @@ class RecipeScraper
         @pages.each do |title, node_obj|
             node_obj[:recipes].each do |recipe_node|
                 write_recipe(recipe_node, node_obj)
-                binding.pry
+                # binding.pry
             end
         end
     end
@@ -34,51 +35,51 @@ class RecipeScraper
     private 
 
         def format_page_info(link_node, category_node)
+            url = link_node[:node].href
             title = link_node[:node].text.split("|")[0].strip
             file_name = title.to_s.downcase.split(" ").join("_") + ".txt"
             recipe_header = "#{ title } courtesy #{ url }"
+            category_name = category_node[:node].text.split(" ").join("_")
+            file_loc = "rachnas-kitchen/#{category_name}/#{file_name}"
             {
-                page_url: link_node[:node].href,
+                page_url: url,
                 page_title: title,
                 file_name: file_name,
-                recipe_header: recipe_header
+                file_loc: file_loc,
+                recipe_header: recipe_header,
+                category_name: category_name
             }
+        end
+
+        def create_dir(file_obj)
+            home_dir_name = 'rachnas-kitchen'
+            FileUtils.makedirs(home_dir_name) unless Dir.exists? home_dir_name
+            
+            cat_dir_name = "#{home_dir_name}/#{file_obj[:category_name]}"
+            FileUtils.makedirs(cat_dir_name) unless Dir.exists? cat_dir_name
+        end
+
+        def get_doc_info(file, doc, section)
+            doc_info = doc.css ".#{section}"
+            file.puts
+            file.puts "#{section}"
+            file.puts "------------"
+            doc_info.each_with_index do |node, index|
+                file.puts section == 'ingredient' ? node.text : "#{index + 1}) #{node.text}"
+            end
         end
 
         def write_recipe(link_node, category_node)
             file_info = format_page_info(link_node, category_node)
-            # url = link_node[:node].href
-            # title = link_node[:node].text.split("|")[0].strip
-            # file_name = title.to_s.downcase.split(" ").join("_") + ".txt"
-            # next if File.exists? file_name
-
-            doc = Nokogiri::HTML(open(file_info[:url])) 
-
-            ingredients = doc.css '.ingredient'
-            instructions = doc.css '.instruction'
-            
-
-            # recipe_title = "#{ title } courtesy #{ url }" 
-
-            File.open(file_name, 'w+') do |file|
+            return if File.exists? file_info[:file_loc]
+            doc = Nokogiri::HTML(open(file_info[:page_url])) 
+            create_dir(file_info)
+            File.open(file_info[:file_loc], 'w+') do |file|
                 file.puts file_info[:recipe_header]
-                file.puts
-
-                file.puts "INGREDIENTS"
-                file.puts "------------"
-                ingredients.each do |ingredient|
-                    file.puts ingredient.text
-                end
-                
-                file.puts
-                file.puts "INSTRUCTIONS"
-                file.puts "------------"
-
-                instructions.each_with_index do |instruction, index|
-                    instr_line = "#{index + 1}) #{instruction.text}"
-                    file.puts instr_line
-                end
+                get_doc_info(file, doc, "ingredient")
+                get_doc_info(file, doc, "instruction")
             end
+            puts "Successfully created file: #{file_info[:file_name]}"
         end
 
         def find_links(page, selector, container = {})
@@ -103,38 +104,3 @@ go_get_em = RecipeScraper.new
 go_get_em.grab_categories
 go_get_em.grab_recipes
 go_get_em.build_recipes
-pp go_get_em.pages
-
-
-# recipes.each do |key, value|
-    # file_name = key.to_s.downcase.split(" ").join("_") + ".txt"
-    # next if File.exists? file_name
-
-    # doc = Nokogiri::HTML(open(value)) 
-
-    # ingredients = doc.css('.ingredient')
-    # instructions = doc.css '.instruction'
-    
-
-    # recipe_title = "#{ key.to_s } courtesy #{ value }" 
-
-    # File.open(file_name, 'w+') do |file|
-    #     file.puts recipe_title
-    #     file.puts
-
-    #     file.puts "INGREDIENTS"
-    #     file.puts "------------"
-    #     ingredients.each do |ingredient|
-    #         file.puts ingredient.text
-    #     end
-        
-    #     file.puts
-    #     file.puts "INSTRUCTIONS"
-    #     file.puts "------------"
-
-    #     instructions.each_with_index do |instruction, index|
-    #         instr_line = "#{index + 1}) #{instruction.text}"
-    #         file.puts instr_line
-    #     end
-    # end
-# end
